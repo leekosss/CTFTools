@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+</head>
+<body>
+<div id="app">
+    <h2>添加比赛</h2>
+    <el-form ref="formData" :model="formData" :rules="rules" label-width="100px">
+        <el-form-item label="比赛名称" prop="name">
+            <el-input v-model="formData.name" :style="{ width: '300px' }" @blur="handleBlur('name')"></el-input>
+        </el-form-item>
+        <el-form-item label="比赛网址" prop="url">
+            <el-input v-model="formData.url" :style="{ width: '300px' }" @blur="handleBlur('url')"></el-input>
+        </el-form-item>
+        <el-form-item label="比赛类型" prop="type">
+            <el-input v-model="formData.type" :style="{ width: '300px' }" @blur="handleBlur('type')"></el-input>
+        </el-form-item>
+        <el-form-item label="活动时间">
+            <el-col :span="6">
+                <el-date-picker type="date" placeholder="开始时间" v-model="formData.startTime"
+                                style="width: 80%;" format="yyyy-MM-dd"
+                                @change="handleChange('startTime')"></el-date-picker>
+            </el-col>
+            <el-col :span="6">
+                <el-date-picker
+                        type="date"
+                        placeholder="结束时间"
+                        v-model="formData.endTime"
+                        style="width: 80%;"
+                        format="yyyy-MM-dd"
+                        @change="handleChange('endTime')"
+
+                ></el-date-picker>
+
+            </el-col>
+        </el-form-item>
+
+        <el-form-item>
+            <el-button type="primary" @click="validateBeforeSubmit">添加比赛</el-button>
+            <el-button @click="resetForm()">重置</el-button>
+        </el-form-item>
+    </el-form>
+</div>
+
+<script src="../js/axios.min.js"></script>
+<script src="../js/vue.js"></script>
+<script src="../element-ui/lib/index.js"></script>
+<script src="../js/moment.js"></script>
+<script>
+    Vue.prototype.$moment = moment;
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                formData: {
+                    name: "",
+                    url: "",
+                    type: "",
+                    startTime: "",
+                    endTime: "",
+                },
+                rules: {
+                    name: [
+                        {required: true, message: '请输入比赛名称', trigger: 'blur'}
+                    ],
+                    url: [
+                        {required: true, message: '请输入比赛网址', trigger: 'blur'}
+                    ],
+                    type: [
+                        {required: true, message: '请输入比赛类型', trigger: 'blur'}
+                    ],
+                    startTime: [
+                        {required: true, message: '请选择开始时间', trigger: 'blur'}
+                    ],
+                    endTime: [
+                        {required: true, message: '请选择结束时间', trigger: 'blur'}
+                    ],
+                }
+            }
+        },
+        methods: {
+            validateBeforeSubmit() {
+                // 首先检查时间字段是否有值
+                if (!this.formData.startTime || !this.formData.endTime) {
+                    this.$message.error('请填写完整的时间信息');
+                    return;
+                }
+
+                this.$refs.formData.validate((valid) => {
+                    if (valid) {
+                        // 验证通过后继续对结束时间进行验证
+                        const startTime = new Date(this.formData.startTime);
+                        const endTime = new Date(this.formData.endTime);
+
+                        if (endTime < startTime) {
+                            this.$message.error('结束时间不能早于开始时间');
+                        } else {
+                            // 结束时间验证通过，执行提交逻辑
+                            this.onSubmit();
+                        }
+                    } else {
+                        this.$message.error('请完整填写表单信息');
+                    }
+                });
+            },
+
+            onSubmit() {
+                let _this = this
+                console.log('submit!');
+                let data = {
+                    name: this.formData.name,
+                    url: this.formData.url,
+                    type: this.formData.type,
+                    startTime: this.formData.startTime,
+                    endTime: this.formData.endTime,
+                }
+                axios.post(`/event/add`, data).then(res => {
+                    // 添加成功后，触发提示
+                    _this.$message({
+                        message: '添加成功',
+                        type: 'success'
+                    });
+                    _this.resetForm()
+                })
+            },
+            resetForm() {
+                // 重置表单
+                this.$refs.formData.resetFields();
+                // 手动清空时间选择器的值
+                this.formData.startTime = "";
+                this.formData.endTime = "";
+            },
+
+            handleChange(field) {
+                // 将日期格式转换为后端需要的格式
+                this.formData[field] = this.$moment(this.formData[field]).format('YYYY-MM-DD');
+            },
+            handleBlur(field) {
+                // 在失去焦点时触发验证
+                this.$refs.formData.validateField(field);
+            },
+        }
+    })
+</script>
+</body>
+</html>

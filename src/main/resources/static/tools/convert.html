@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>convert</title>
+  <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+</head>
+
+<body>
+<div id="app">
+  <h2>进制转换</h2>
+  <el-input
+          type="textarea"
+          autosize
+          placeholder="请输入加密/解密的字符串"
+          v-model="inputs"
+          :autosize="{ minRows: 7}"
+  >
+  </el-input>
+  <div style="margin: 20px 0;"></div>
+  <el-input
+          type="textarea"
+          :autosize="{ minRows: 7}"
+          placeholder="加密/解密的结果"
+          v-model="outputs">
+  </el-input>
+  <div style="margin: 20px 0;"></div>
+  <el-select v-model="value" clearable placeholder="请选择">
+    <el-option
+            v-for="item in options"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value">
+    </el-option>
+  </el-select>
+  <el-button type="success" @click="crypt('1')">转换</el-button>
+</div>
+
+<script src="../js/axios.min.js"></script>
+<script src="../js/vue.js"></script>
+<script src="../element-ui/lib/index.js"></script>
+<script>
+  new Vue({
+    el: '#app',
+    data() {
+      return {
+        inputs: '',
+        outputs: '',
+        options: [
+          {
+            value: 'To16',
+            label: 'To16'
+          },
+          {
+            value: 'From16',
+            label: 'From16'
+          },
+        ],
+        value: '',
+        option: null    // 加密、解密
+      }
+    },
+    methods:{
+      crypt(op) {
+        // 发送请求到后端进行加密、解密
+        let _this = this
+        this.option = op
+        let data = {
+          'inputs': this.inputs,
+          'type': this.value,
+          'options': this.option,
+        }
+        axios.post(`/tools/convert`,data).then(res=>{
+          _this.outputs = res.data.data
+          if(res.data.code===1) { // 成功
+            _this.$message({
+              message: res.data.msg,
+              type: 'success'
+            });
+          }else{
+            _this.$message({
+              message: res.data.msg,
+              type: 'error'
+            });
+          }
+        })
+      },
+    }
+  })
+</script>
+</body>
+</html>

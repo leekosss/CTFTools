@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>近期赛事</title>
+    <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="element-ui/lib/theme-chalk/pagination.css">
+
+</head>
+
+<body>
+<div id="app">
+    <!-- 导航栏 -->
+    <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect"
+             background-color="#545c64" text-color="#fff" active-text-color="#ffd04b">
+        <el-menu-item index="1" aria-checked="true" onclick="location.href='index.html'">近期赛事</el-menu-item>
+        <el-menu-item index="2" onclick="location.href='tools.html'">在线工具</el-menu-item>
+        <el-submenu index="3">
+            <template slot="title">CTF靶场</template>
+            <el-menu-item index="2-1" onclick="openCTF('https://buuoj.cn/challenges')">BUUCTF</el-menu-item>
+            <el-menu-item index="2-2" onclick="openCTF('https://ctf.show/')">CTFSHOW</el-menu-item>
+            <el-menu-item index="2-3" onclick="openCTF('https://www.nssctf.cn/')">NSSCTF</el-menu-item>
+        </el-submenu>
+        <el-menu-item index="4" onclick="location.href='admin.html'">后台管理</el-menu-item>
+        <el-menu-item index="5">
+            <el-button type="primary" icon="el-icon-s-tools" @click="dgVisible = true">退出登录</el-button>
+            <el-dialog title="提示" :visible.sync="dgVisible" width="30%" :before-close="hClose">
+                <span>是否退出登录</span>
+                <span slot="footer" class="dialog-footer">
+                        <el-button @click="dgVisible = false">取 消</el-button>
+                        <el-button type="primary" @click="confirmLogout">确 定</el-button>
+                    </span>
+            </el-dialog>
+        </el-menu-item>
+    </el-menu>
+
+    <!-- 比赛状态按钮 -->
+    <el-row style="padding: 0 30px;">
+        <el-button type="warning" plain @click="filterEventsByStatus('registrationNotStarted')">比赛未开始</el-button>
+        <el-button type="success" plain @click="filterEventsByStatus('inProgress')">比赛中</el-button>
+        <el-button type="danger" plain @click="filterEventsByStatus('ended')">比赛结束</el-button>
+        <el-button type="primary" plain @click="filterEventsByStatus('all')">所有比赛</el-button>
+    </el-row>
+
+    <!-- 比赛卡片 -->
+    <el-row :gutter="20" style="padding: 0 30px;">
+        <el-col :span="6" v-for="(item, index) in filteredEventData" :key="index">
+            <el-card class="box-card" shadow="hover">
+                <div slot="header" class="clearfix">
+                    <span class="contest">{{ item.name }}</span>
+                </div>
+                <div class="text item">
+                    {{ '比赛类型: ' + item.type }}
+                </div>
+                <div class="text item">
+                    {{ '开始时间 ' + item.startTime }}
+                </div>
+                <div class="text item">
+                    {{ '结束时间 ' + item.endTime }}
+                </div>
+
+                <el-button style="float: right; padding: 10px 10px; margin-bottom: 10px;" type="primary"
+                           @click="openDialog(item)">更多信息
+                </el-button>
+            </el-card>
+        </el-col>
+    </el-row>
+
+    <el-dialog title="比赛详情" :visible.sync="dialogVisible" width="30%" :before-close="handleClose">
+        <div slot="header" class="clearfix">
+            <span class="contest">{{ currentEvent ? currentEvent.name : '' }}</span>
+        </div>
+        <div class="text item">
+            {{ currentEvent ? '比赛名称: ' + currentEvent.name : '' }}
+        </div>
+        <div class="text item">
+            {{ currentEvent ? '比赛链接: ' + currentEvent.url : '' }}
+        </div>
+        <div class="text item">
+            {{ currentEvent ? '比赛类型: ' + currentEvent.type : '' }}
+        </div>
+        <div class="text item">
+            {{ currentEvent ? '开始时间 ' + currentEvent.startTime : '' }}
+        </div>
+        <div class="text item">
+            {{ currentEvent ? '结束时间 ' + currentEvent.endTime : '' }}
+        </div>
+        <span slot="footer" class="dialog-footer">
+                <el-button @click="dialogVisible = false">关闭</el-button>
+            </span>
+    </el-dialog>
+
+    <!-- 分页 -->
+    <el-row class="pagination-row" :gutter="20" style="padding: 0 30px;">
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                       :current-page.sync="currentPage" :page-size="pageSize" :page-sizes="[4, 8, 12, 20]"
+                       layout="total, sizes, prev, pager, next" :total="total">
+        </el-pagination>
+    </el-row>
+    <!--   echart图表  -->
+    <div id="echart" style="width: 800px; height: 600px; margin: 150px auto;"></div>
+
+</div>
+
+<script src="js/axios.min.js"></script>
+<script src="js/vue.js"></script>
+<script src="element-ui/lib/index.js"></script>
+<script src="js/common.js"></script>
+<script src="js/echarts.js"></script>
+<script>
+
+
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                activeIndex: '1',
+                dialogVisible: false,
+                dgVisible: false, // 退出登录弹窗
+                eventData: [],   // 存储比赛信息
+                filteredEventData: [], // 用于显示的经过筛选的比赛数据
+                currentEvent: null,
+                currentPage: 1, // 当前页
+                total: 0,       // 总记录数
+                pageSize: 8,    // 页面大小
+                monthlyData: [],
+
+            };
+        },
+        mounted() {
+            // 将ECharts初始化移到mounted钩子中
+            this.loadData();
+
+        },
+
+        methods: {
+            // 加载数据的方法
+            loadData() {
+                let _this = this;
+                axios.get(`/event/selectByPageSize?currentPage=${this.currentPage}&pageSize=${this.pageSize}`).then(res => {
+                    _this.filteredEventData = res.data.data;  // 修改这里，使用 filteredEventData
+                    _this.eventData = res.data.data;
+                });
+                axios.get(`/event/getTotal`).then(res => {
+                    _this.total = res.data.data;
+                });
+                axios.get(`/event/count`).then(res => {
+                    _this.monthlyData = res.data.data
+                    this.initEChart(this.monthlyData);
+                    console.log(res.data.data)
+                })
+            },
+
+            handleSelect(key, keyPath) {
+                console.log(key, keyPath);
+            },
+            openDialog(event) {
+                this.currentEvent = event;
+                this.dialogVisible = true;
+            },
+            handleClose() {
+                this.dialogVisible = false;
+            },
+            hClose(done) {
+                this.$confirm('确认关闭？')
+                    .then(_ => {
+                        this.dgVisible = false;
+                    })
+                    .catch(_ => {
+                    });
+            },
+            confirmLogout() {
+                this.logout().then(() => {
+                    this.dgVisible = false; // 关闭对话框
+                });
+            },
+            logout() {
+                return new Promise((resolve, reject) => {
+                    axios.get('/user/logout/').then(res => {
+                        location.href = "login.html";
+                        resolve();
+                    }).catch(error => {
+                        reject(error);
+                    });
+                });
+            },
+            // 添加这两个方法用于分页
+            handleSizeChange(val) {
+                this.pageSize = val;
+                this.loadData(); // 当页面大小改变时重新加载数据
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val;
+                this.loadData(); // 当前页面改变时重新加载数据
+            },
+            // 根据按钮类型筛选比赛数据
+            filterEventsByStatus(status) {
+                const currentTime = new Date();
+
+                // 使用过滤函数根据状态筛选比赛数据
+                this.filteredEventData = this.eventData.filter(item => {
+                    const startTime = new Date(item.startTime);
+                    const endTime = new Date(item.endTime);
+
+                    if (status === 'registrationNotStarted') {
+                        return currentTime < startTime;
+                    } else if (status === 'inProgress') {
+                        return currentTime >= startTime && currentTime <= endTime;
+                    } else if (status === 'ended') {
+                        return currentTime > endTime;
+                    }
+
+                    return true; // 默认情况下显示所有比赛
+                });
+            },
+            // 初始化echart
+            initEChart(monthlyData) {
+                // 在Vue组件内部初始化ECharts
+                var myChart = echarts.init(document.getElementById('echart'));
+                var option = {
+                    tooltip: {
+                        trigger: 'item'
+                    },
+                    series: [
+                        {
+                            name: '比赛统计',
+                            type: 'pie',
+                            radius: [50, 250], // 修改为你需要的范围
+                            center: ['50%', '50%'],
+                            roseType: 'area',
+                            avoidLabelOverlap: false,
+                            itemStyle: {
+                                borderRadius: 8,
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            },
+                            label: {
+                                show: true,
+                                position: 'outside',
+                                formatter: '{b}: {c}'
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true,
+                                    fontSize: 20,
+                                    fontWeight: 'bold'
+                                }
+                            },
+                            labelLine: {
+                                show: true
+                            },
+                            data: monthlyData.map((item) => ({
+                                value: item.days,
+                                name: item.month
+                            }))
+                        }
+                    ]
+                };
+
+
+
+                // 使用setOption应用配置
+                myChart.setOption(option);
+            },
+
+
+        },
+    })
+</script>
+</body>
+
+</html>

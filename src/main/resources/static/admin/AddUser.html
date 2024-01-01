@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+    <style>
+        .box-card {
+            width: 500px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-card class="box-card">
+        <h2>添加用户</h2>
+        <el-form
+                :model="ruleForm"
+                status-icon
+                :rules="rules"
+                ref="ruleForm"
+                label-position="left"
+                label-width="80px"
+                class="login-from"
+        >
+            <el-form-item label="用户名" prop="uname">
+                <el-input v-model="ruleForm.uname"></el-input>
+            </el-form-item>
+            <el-form-item label="密码" prop="pass">
+                <el-input
+                        type="password"
+                        v-model="ruleForm.pass"
+                        autocomplete="off"
+                ></el-input>
+            </el-form-item>
+            <el-form-item label="确认密码" prop="password">
+                <el-input
+                        type="password"
+                        v-model="ruleForm.password"
+                        autocomplete="off"
+                ></el-input>
+            </el-form-item>
+
+            <el-form-item label="用户权限" required prop="role">
+                <el-select v-model="ruleForm.role" placeholder="用户权限">
+                    <el-option label="管理员" value="1"></el-option>
+                    <el-option label="普通用户" value="0"></el-option>
+                </el-select>
+            </el-form-item>
+
+        </el-form>
+        <div class="btnGroup">
+            <el-button type="primary" @click="submitForm('ruleForm')" v-loading="loading"
+            >提交
+            </el-button
+            >
+            <el-button @click="resetForm('ruleForm')">重置</el-button>
+        </div>
+    </el-card>
+</div>
+
+<script src="../js/axios.min.js"></script>
+<script src="../js/vue.js"></script>
+<script src="../element-ui/lib/index.js"></script>
+
+<script>
+
+
+    new Vue({
+        el: '#app',
+        data() {
+            let validatePass = (rule, value, callback) => {
+                if (value === "") {
+                    callback(new Error("请输入密码"));
+                } else {
+                    if (this.ruleForm.checkPass !== "") {
+                        this.$refs.ruleForm.validateField("checkPass");
+                    }
+                    callback();
+                }
+            };
+            let validatePass2 = (rule, value, callback) => {
+                if (value === "") {
+                    callback(new Error("请再次输入密码"));
+                } else if (value !== this.ruleForm.pass) {
+                    callback(new Error("两次输入密码不一致!"));
+                } else {
+                    callback();
+                }
+            };
+            return {
+                ruleForm: {
+                    uname: "",
+                    pass: "",
+                    password: "",
+                    role: ""
+                },
+                rules: {
+                    uname: [
+                        {required: true, message: "用户名不能为空！", trigger: "blur"},
+                        {min: 4, max: 16, message: "用户名长度应为4到16个字符", trigger: "blur"}
+                    ],
+                    pass: [
+                        {required: true, validator: validatePass, trigger: "blur"},
+                        {min: 6, max: 20, message: "密码长度应为6到20个字符", trigger: "blur"}
+                    ],
+                    password: [
+                        {required: true, validator: validatePass2, trigger: "blur"},
+                        {min: 6, max: 20, message: "密码长度应为6到20个字符", trigger: "blur"}
+                    ],
+                    role: [
+                        { required: true, message: '请选择用户权限', trigger: 'change' }
+                    ],
+                },
+                loading: false
+            };
+        },
+        methods: {
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        let _this = this;
+                        let data = { // 请求参数，为 data，与登录的 params 不太一样
+                            "username": _this.ruleForm.uname,
+                            "password": _this.ruleForm.password,
+                            "role": _this.ruleForm.role
+                        }
+                        console.log(data)
+                        axios.post(`/user/registerByAdmin/`, data).then((res) => { // 当收到后端的响应时执行该括号内的代码，res 为响应信息，也就是后端返回的信息
+                            if (res.data.code === 1) {  // 当响应的编码为 1 时，说明注册成功
+                                // 显示后端响应的成功信息
+                                this.$message({
+                                    message: res.data.msg,
+                                    type: "success",
+                                });
+
+                            } else {  // 当响应的编码不为 1 时，说明注册失败
+                                // 显示后端响应的失败信息
+                                this.$message({
+                                    message: res.data.msg,
+                                    type: "warning",
+                                });
+                            }
+                            console.log(res);
+                        });
+                        this.resetForm('ruleForm')
+                    } else { // 如果账号或密码有一个没填，就直接提示必填，不向后端请求
+                        console.log("error submit!!");
+                        this.loading = false;
+                        return false;
+                    }
+                });
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+            },
+
+        },
+    })
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>后台登录</title>
+  <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
+  <style>
+    .box-card {
+      margin: 200px auto;
+      width: 400px;
+    }
+
+    .login-from {
+      margin: auto auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+
+    <template>
+      <div>
+        <el-card class="box-card">
+          <h2>登录</h2>
+          <el-form :model="ruleForm" status-icon :rules="rules" ref="ruleForm" label-position="left" label-width="70px"
+            class="login-from">
+            <el-form-item label="用户名" prop="uname">
+              <el-input v-model="ruleForm.uname"></el-input>
+            </el-form-item>
+            <el-form-item label="密码" prop="password">
+              <el-input type="password" v-model="ruleForm.password" autocomplete="off"></el-input>
+            </el-form-item>
+          </el-form>
+          <div class="btnGroup">
+            <el-button type="primary" @click="submitForm('ruleForm')">登录</el-button>
+            <el-button @click="resetForm('ruleForm')">重置</el-button>
+<!--            <router-link to="/register">-->
+            <el-button @click="register" style="margin-left:10px">注册</el-button>
+<!--            </router-link>-->
+          </div>
+        </el-card>
+      </div>
+    </template>
+  </div>
+
+  <script src="js/axios.min.js"></script>
+  <script src="js/vue.js"></script>
+  <script src="element-ui/lib/index.js"></script>
+  <script>
+
+    new Vue(
+      {
+        el: '#app',
+        data() {
+          return {
+            ruleForm: {
+              uname: "",
+              password: "",
+            },
+            rules: {
+              uname: [
+                { required: true, message: "用户名不能为空！", trigger: "blur" },
+                { min: 4,max:16,message: "用户名长度应为4到16个字符", trigger: "blur"}
+              ],
+              password: [
+                { required: true, message: "密码不能为空！", trigger: "blur" },
+                { min: 6, max: 20, message: "密码长度应为6到20个字符", trigger: "blur" }
+              ],
+            },
+          };
+        },
+        methods: {
+          submitForm(formName) {
+            let _this = this
+            this.$refs[formName].validate((valid) => {
+              if (valid) {
+                let data = {
+                  "username": _this.ruleForm.uname,
+                  "password": _this.ruleForm.password
+                }
+                axios.post(`/user/login/`, data).then(res => {
+                  if (res.data.code === 1) {
+                    _this.open();
+                    // 在登录成功时调用 loginSuccess 方法
+                    _this.loginSuccess();
+                  } else {
+                    _this.close();
+                  }
+                })
+              } else {
+                console.log("error submit!!");
+                return false;
+              }
+            });
+          },
+
+          resetForm(formName) {   // 重置表单
+            this.$refs[formName].resetFields();
+          },
+          register(){
+            location.href="register.html"
+          },
+          loginSuccess() {    // 登录成功跳转后台
+            setTimeout(() => {
+              location.href = "index.html";
+            }, 1000);
+          },
+          open() {
+            this.$notify.success({
+              title: 'message',
+              message: '登录成功',
+              showClose: false
+            });
+          },
+          close() {
+            this.$notify.error({
+              title: 'message',
+              message: '登录失败',
+              showClose: false
+            });
+          }
+        },
+      }
+    )
+  </script>
+</body>
+
+</html>

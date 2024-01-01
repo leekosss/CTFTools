@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Caesar</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+</head>
+
+<body>
+<div id="app">
+    <h2>Caesar编码</h2>
+    <el-input
+            type="textarea"
+            autosize
+            placeholder="请输入加密/解密的字符串"
+            v-model="inputs"
+            :autosize="{ minRows: 7}"
+    >
+    </el-input>
+    <div style="margin: 20px 0;"></div>
+    <el-input
+            type="textarea"
+            :autosize="{ minRows: 7}"
+            placeholder="加密/解密的结果"
+            v-model="outputs">
+    </el-input>
+    <el-select v-model="value" clearable placeholder="凯撒偏移量">
+        <el-option
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value">
+        </el-option>
+    </el-select>
+    <div style="margin: 20px 0;"></div>
+    <el-button type="success" @click="crypt('1')">加密</el-button>
+    <el-button type="warning" @click="crypt('2')">解密</el-button>
+</div>
+
+<script src="../js/axios.min.js"></script>
+<script src="../js/vue.js"></script>
+<script src="../element-ui/lib/index.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                inputs: '',
+                outputs: '',
+                options: [
+                    {
+                        value: '1',
+                        label: '1'
+                    },
+                    {
+                        value: '2',
+                        label: '2'
+                    },
+                    {
+                        value: '3',
+                        label: '3'
+                    },
+                    {
+                        value: '4',
+                        label: '4'
+                    },
+                    {
+                        value: '5',
+                        label: '5'
+                    },
+                    {
+                        value: '6',
+                        label: '6'
+                    },
+                    {
+                        value: '7',
+                        label: '7'
+                    },
+                    {
+                        value: '8',
+                        label: '8'
+                    },
+                    {
+                        value: '9',
+                        label: '9'
+                    },
+                    {
+                        value: '10',
+                        label: '10'
+                    },
+                    {
+                        value: '11',
+                        label: '11'
+                    },
+                    {
+                        value: '12',
+                        label: '12'
+                    },
+                    {
+                        value: '13',
+                        label: '13'
+                    },
+                    {
+                        value: '14',
+                        label: '14'
+                    },
+                    {
+                        value: '15',
+                        label: '15'
+                    },
+                    {
+                        value: '16',
+                        label: '16'
+                    },
+                    {
+                        value: '17',
+                        label: '17'
+                    },
+                    {
+                        value: '18',
+                        label: '18'
+                    },
+                    {
+                        value: '19',
+                        label: '19'
+                    },
+                    {
+                        value: '20',
+                        label: '20'
+                    },
+                    {
+                        value: '21',
+                        label: '21'
+                    },
+                    {
+                        value: '22',
+                        label: '22'
+                    },
+                    {
+                        value: '23',
+                        label: '23'
+                    },
+                    {
+                        value: '24',
+                        label: '24'
+                    },
+                    {
+                        value: '25',
+                        label: '25'
+                    },
+                ],
+                value: '',
+                option: null    // 加密、解密
+            }
+        },
+        methods:{
+            crypt(op) {
+                // 发送请求到后端进行加密、解密
+                let _this = this
+                this.option = op
+                let data = {
+                    'inputs': this.inputs,
+                    'type': this.value,
+                    'options': this.option,
+                }
+                axios.post(`/tools/caesar`,data).then(res=>{
+                    _this.outputs = res.data.data
+                    if(res.data.code===1) { // 成功
+                        _this.$message({
+                            message: res.data.msg,
+                            type: 'success'
+                        });
+                    }else{
+                        _this.$message({
+                            message: res.data.msg,
+                            type: 'error'
+                        });
+                    }
+                })
+            },
+        }
+    })
+</script>
+</body>
+</html>

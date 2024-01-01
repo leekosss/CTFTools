@@ -1,0 +1,311 @@
+<!-- QueryEvent.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueryEvent Component</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+</head>
+
+<body>
+<div id="app">
+    <h2>比赛列表</h2>
+    <el-table
+            :data="tableData"
+            style="width: 100%">
+        <el-table-column
+                label="比赛名称"
+                width="180">
+            <template slot-scope="scope">
+                <span style="margin-left: 10px">{{ scope.row.name }}</span>
+            </template>
+        </el-table-column>
+        <el-table-column
+                label="比赛网址"
+                width="280">
+            <template slot-scope="scope">
+                <span style="margin-left: 10px">{{ scope.row.url }}</span>
+            </template>
+        </el-table-column>
+        <el-table-column
+                label="比赛类型"
+                width="180">
+            <template slot-scope="scope">
+                <span style="margin-left: 10px">{{ scope.row.type }}</span>
+            </template>
+        </el-table-column>
+        <el-table-column
+                label="开始时间"
+                width="180">
+            <template slot-scope="scope">
+                <i class="el-icon-time"></i>
+                <span style="margin-left: 10px">{{ scope.row.startTime }}</span>
+            </template>
+        </el-table-column>
+        <el-table-column
+                label="结束时间"
+                width="180">
+            <template slot-scope="scope">
+                <i class="el-icon-time"></i>
+                <span style="margin-left: 10px">{{ scope.row.endTime }}</span>
+            </template>
+        </el-table-column>
+        <el-table-column label="操作">
+            <template slot-scope="scope">
+                <el-button
+                        size="mini"
+                        @click="handleEdit(scope.$index, scope.row)">编辑
+                </el-button>
+                <el-button
+                        size="mini"
+                        type="danger"
+                        @click="handleDelete(scope.$index, scope.row)">删除
+                </el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <el-dialog
+            title="提示"
+            :visible.sync="dialogVisible"
+            width="500px" height="300px"
+            :before-close="handleClose">
+
+        <el-form ref="formData" :model="formData" :rules="rules" label-width="100px">
+            <el-form-item label="比赛名称" prop="name">
+                <el-input v-model="formData.name" :style="{ width: '300px' }" @blur="handleBlur('name')"></el-input>
+            </el-form-item>
+            <el-form-item label="比赛网址" prop="url">
+                <el-input v-model="formData.url" :style="{ width: '300px' }" @blur="handleBlur('url')"></el-input>
+            </el-form-item>
+            <el-form-item label="比赛类型" prop="type">
+                <el-input v-model="formData.type" :style="{ width: '300px' }" @blur="handleBlur('type')"></el-input>
+            </el-form-item>
+            <el-form-item label="活动时间">
+                <el-col :span="10">
+                    <el-date-picker type="date" placeholder="开始时间" v-model="formData.startTime"
+                                    style="width: 120%;" format="yyyy-MM-dd"
+                                    @change="handleChange('startTime')"></el-date-picker>
+                </el-col>
+                <el-col :span="10">
+                    <el-date-picker type="date" placeholder="结束时间" v-model="formData.endTime"
+                                    style="width: 120%;" format="yyyy-MM-dd"
+                                    @change="handleChange('endTime')"></el-date-picker>
+                </el-col>
+            </el-form-item>
+
+
+            <el-form-item>
+                <el-button type="primary" @click="validateBeforeSubmit">修改</el-button>
+                <el-button @click="resetForm()">重置</el-button>
+            </el-form-item>
+        </el-form>
+
+    </el-dialog>
+
+
+    <div class="block">
+        <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page.sync="currentPage"
+                :page-size="pageSize"
+                :page-sizes="[4, 8, 12, 20]"
+                layout="total, sizes, prev, pager, next"
+                :total="total">
+        </el-pagination>
+    </div>
+
+
+</div>
+</body>
+
+<script src="../js/axios.min.js"></script>
+<script src="../js/vue.js"></script>
+<script src="../element-ui/lib/index.js"></script>
+<script src="../js/moment.js"></script>
+<script>
+    Vue.prototype.$moment = moment;
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                formData: {
+                    id: "",
+                    name: "",
+                    url: "",
+                    type: "",
+                    startTime: "",
+                    endTime: "",
+                },
+                rules: {
+                    name: [
+                        {required: true, message: '请输入比赛名称', trigger: 'blur'}
+                    ],
+                    url: [
+                        {required: true, message: '请输入比赛网址', trigger: 'blur'}
+                    ],
+                    type: [
+                        {required: true, message: '请输入比赛类型', trigger: 'blur'}
+                    ],
+                    startTime: [
+                        {required: true, message: '请选择开始时间', trigger: 'change'}
+                    ],
+                    endTime: [
+                        {required: true, message: '请选择结束时间', trigger: 'change'}
+                    ],
+                },
+                tableData: [],  // 存储比赛信息
+                currentPage: 1, // 当前页
+                total: 0,       // 总记录数
+                pageSize: 4,    // 页面大小
+                dialogVisible: false,
+
+            }
+        },
+        mounted() {
+            this.loadData()
+        },
+        methods: {
+            validateBeforeSubmit() {
+                // 首先检查时间字段是否有值
+                if (!this.formData.startTime || !this.formData.endTime) {
+                    this.$message.error('请填写完整的时间信息');
+                    return;
+                }
+
+                this.$refs.formData.validate((valid) => {
+                    if (valid) {
+                        // 验证通过后继续对结束时间进行验证
+                        const startTime = new Date(this.formData.startTime);
+                        const endTime = new Date(this.formData.endTime);
+
+                        if (endTime < startTime) {
+                            this.$message.error('结束时间不能早于开始时间');
+                        } else {
+                            // 结束时间验证通过，执行提交逻辑
+                            this.onSubmit();
+                        }
+                    } else {
+                        this.$message.error('请完整填写表单信息');
+                    }
+                });
+            },
+
+            // 加载数据的方法
+            loadData() {
+                let _this = this;
+                axios.get(`/event/selectByPageSize?currentPage=${this.currentPage}&pageSize=${this.pageSize}`).then(res => {
+                    _this.tableData = res.data.data;
+                });
+                axios.get(`/event/getTotal`).then(res => {
+                    _this.total = res.data.data;
+                });
+            },
+            handleEdit(index, row) {
+                // console.log(index, row);
+                // console.log(row.id)
+                let _this = this
+                this.formData.id = row.id
+                axios.get(`/event/select/${row.id}`).then(res => {
+                    let aEvent = res.data.data
+                    _this.formData.name = aEvent.name
+                    _this.formData.url = aEvent.url
+                    _this.formData.type = aEvent.type
+                    _this.formData.startTime = aEvent.startTime
+                    _this.formData.endTime = aEvent.endTime
+                })
+                this.dialogVisible = true
+
+            },
+            handleClose(done) {
+                this.$confirm('确认关闭？')
+                    .then(_ => {
+                        done();
+                    })
+                    .catch(_ => {
+                    });
+            },
+            handleDelete(index, row) {
+                // console.log(index, row);
+                let _this = this
+                // 弹出对话框确认是否删除
+                this.$confirm('确认删除吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning',
+                }).then(() => {
+                    // 在这里执行删除操作
+                    console.log('执行删除操作');
+                    // console.log(row.id)
+                    axios.get(`/event/delete/${row.id}`).then(res => {
+                        // 删除完成后重新加载数据
+                        this.loadData();
+                        // 提示删除成功
+                        _this.$message({
+                            type: 'success',
+                            message: '删除成功!'
+                        });
+                    })
+
+
+                }).catch(() => {
+                    // 用户点击取消按钮
+                    console.log('取消删除');
+                });
+            },
+            handleSizeChange(val) {
+                // console.log(`每页 ${val} 条`);
+                this.pageSize = val
+                this.loadData()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.loadData()
+
+            },
+            onSubmit() {
+                let _this = this
+                console.log('submit!');
+                let data = {
+                    id: this.formData.id,
+                    name: this.formData.name,
+                    url: this.formData.url,
+                    type: this.formData.type,
+                    startTime: this.formData.startTime,
+                    endTime: this.formData.endTime,
+                }
+                console.log(data)
+                axios.post(`/event/update`, data).then(res => {
+                    // 添加成功后，触发提示
+                    _this.$message({
+                        message: '修改成功',
+                        type: 'success'
+                    });
+                    _this.resetForm()
+                    this.loadData()
+                    _this.dialogVisible = false
+
+                })
+
+            },
+            resetForm() {
+                // 重置表单
+                this.$refs.formData.resetFields();
+            },
+
+            handleChange(field) {
+                // 将日期格式转换为后端需要的格式
+                this.formData[field] = this.$moment(this.formData[field]).format('YYYY-MM-DD');
+            },
+            handleBlur(field) {
+                // 在失去焦点时触发验证
+                this.$refs.formData.validateField(field);
+            },
+        }
+
+    })
+</script>
+</html>
